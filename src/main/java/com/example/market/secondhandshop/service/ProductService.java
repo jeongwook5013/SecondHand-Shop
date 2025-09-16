@@ -12,8 +12,12 @@ import com.example.market.secondhandshop.repository.ProductRepository;
 import com.example.market.secondhandshop.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,12 +34,23 @@ public class ProductService {
     }
 
     @Transactional
-    public String registerProduct(ProductRequestDto requestDto){
-        //판매자(User)를 찾음
+    public String registerProduct(ProductRequestDto requestDto, MultipartFile image) throws IOException{
+        //이미지 파일 저장 로직
+        String uploadDir = "uploads/";  //이미지를 저장할 디렉토리 지정
+        File uploadPath = new File(uploadDir);
+        if(!uploadPath.exists()){
+            uploadPath.mkdirs();
+        }
+        String fileName = UUID.randomUUID().toString() + "_" + image.getOriginalFilename();
+        File dest = new File(uploadPath, fileName);
+        image.transferTo(dest);
+        String imageUrl = "/" + uploadDir + fileName;   //데이터베이스에 저장할 경로
+
+        //판매자(User)를 찾기
         User seller = userRepository.findById(requestDto.getSellerId())
                 .orElseThrow(() -> new IllegalArgumentException("판매자를 찾을 수 없습니다."));
 
-        //카테고리를 찾는것
+        //카테고리를 찾기
         Category category = categoryRepository.findById(requestDto.getCategoryId())
                 .orElseThrow(() -> new IllegalArgumentException("카테고리를 찾을 수 없습니다."));
 
@@ -45,11 +60,11 @@ public class ProductService {
         product.setDescription(requestDto.getDescription());
         product.setPrice(requestDto.getPrice());
         product.setLocation(requestDto.getLocation());
-        product.setCategory(category);
         product.setSeller(seller);
-        product.setImageUrl(requestDto.getImageUrl());
+        product.setCategory(category);
+        product.setImageUrl(imageUrl);  //파일 경로를 엔티티에 저장
 
-        //데이터베이스에 저장하기
+        //데이터베이스에 저장
         productRepository.save(product);
 
         return "상품 등록이 완료되었습니다.";

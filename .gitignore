@@ -35,3 +35,16 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### 보안 및 환경 설정 ###
+*.env
+*.log
+logs/
+
+### 파일 업로드 디렉토리 ###
+uploads/
+
+### 데이터베이스 관련 ###
+*.db
+*.sqlite
+*.sqlite3

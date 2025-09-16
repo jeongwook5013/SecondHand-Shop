@@ -1,6 +1,5 @@
 package com.example.market.secondhandshop.entity;
 
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,6 +8,9 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
+/**
+ * 상품 엔티티
+ */
 @Entity
 @Table(name = "products")
 @Data
@@ -30,7 +32,7 @@ public class Product {
     private int price;
 
     @Column(nullable = false)
-    private String location; // <<-- 이 필드의 nullable=false가 정확히 있는지 확인해주세요
+    private String location;
 
     @Column(name = "is_sold", nullable = false)
     private boolean isSold = false;

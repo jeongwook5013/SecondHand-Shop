@@ -1,6 +1,5 @@
 package com.example.market.secondhandshop.entity;
 
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,6 +8,9 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
+/**
+ * 사용자 엔티티
+ */
 @Entity
 @Table(name = "users")
 @Data

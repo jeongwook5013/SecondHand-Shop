@@ -7,6 +7,7 @@ import com.example.market.secondhandshop.service.ProductService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -20,14 +21,19 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<String> registerProduct(@RequestBody ProductRequestDto requestDto){
+    public ResponseEntity<String> registerProduct(
+            @RequestPart("data") ProductRequestDto requestDto,
+            @RequestPart("image") MultipartFile image) {
         try {
-            String message = productService.registerProduct(requestDto);
+            String message = productService.registerProduct(requestDto, image);
             return ResponseEntity.status(HttpStatus.CREATED).body(message);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("파일 업로드 중 오류가 발생했습니다: " + e.getMessage());
         }
     }
+
 
     @GetMapping
     public ResponseEntity<List<ProductResponseDto>> getProducts(){
