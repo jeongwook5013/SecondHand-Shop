@@ -40,6 +40,8 @@ out/
 *.env
 *.log
 logs/
+src/main/resources/application.properties
+src/main/resources/application-*.properties
 
 ### 파일 업로드 디렉토리 ###
 uploads/

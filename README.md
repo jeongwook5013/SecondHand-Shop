@@ -31,6 +31,7 @@ Spring Boot와 JWT를 활용한 안전하고 현대적인 중고거래 플랫폼
 - **Spring Security**: API 별 접근 권한 제어
 - **CORS 설정**: 프론트엔드 통신 보안
 - **입력값 검증**: 데이터 무결성 보장
+- **민감 정보 보호**: 설정 파일 Git 제외
 
 ### 🔒 보안 정책
 ```java
@@ -46,7 +47,19 @@ protected APIs: 상품 등록/수정/삭제, 사용자 프로필
 - HS256 알고리즘 사용
 - 24시간 유효기간
 - 서명 검증을 통한 위조 방지
+- 강력한 32자 이상의 비밀키 사용
+
+// 환경 설정 보안
+- 민감한 정보는 환경변수 또는 별도 설정 파일 사용
+- 데이터베이스 접속 정보 Git 제외
+- JWT 서명 키 Git 제외
 ```
+
+### ⚠️ 보안 주의사항
+- `application.properties` 파일은 **절대 Git에 커밋하지 마세요**
+- JWT 비밀키는 32자 이상의 강력한 키를 사용하세요
+- 운영 환경에서는 환경변수를 사용하세요
+- 정기적으로 JWT 비밀키를 교체하세요
 
 ## 📊 데이터베이스 구조
 
@@ -114,17 +127,24 @@ cd SecondHand-Shop
 CREATE DATABASE secondhand_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-### 4. 설정 파일 수정
+### 4. 설정 파일 생성 및 수정
+```bash
+# 템플릿 파일을 복사해서 실제 설정 파일 생성
+cp src/main/resources/application.properties.template src/main/resources/application.properties
+```
+
 ```properties
 # src/main/resources/application.properties
 spring.datasource.url=jdbc:mariadb://localhost:3306/secondhand_db
 spring.datasource.username=your_username
 spring.datasource.password=your_password
 
-# JWT 설정 (운영환경에서는 환경변수 사용 권장)
-jwt.secret=your_secret_key_here
+# JWT 설정 (32자 이상의 강력한 비밀키 생성)
+jwt.secret=your_very_secure_jwt_secret_key_here_at_least_32_characters
 jwt.expiration=86400000
 ```
+
+⚠️ **중요**: `application.properties` 파일은 민감한 정보를 포함하므로 Git에 커밋하지 마세요!
 
 ### 5. 애플리케이션 실행
 ```bash
