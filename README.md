@@ -1,6 +1,6 @@
 # 🛍️ SecondHand Shop - 중고거래 플랫폼
 
-Spring Boot와 JWT를 활용한 안전하고 현대적인 중고거래 플랫폼입니다.
+Spring Boot를 이용한 중고거래 플랫폼입니다.
 
 ## 📋 프로젝트 개요
 
