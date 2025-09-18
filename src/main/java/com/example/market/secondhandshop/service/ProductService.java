@@ -70,6 +70,35 @@ public class ProductService {
         return "상품 등록이 완료되었습니다.";
     }
 
+    /**
+     * 파일 없는 상품 등록 (JWT 인증용)
+     */
+    @Transactional
+    public String registerProductWithoutFile(ProductRequestDto requestDto, String currentUsername) {
+        //판매자(User)를 JWT 토큰의 username으로 찾기
+        User seller = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new IllegalArgumentException("로그인한 사용자를 찾을 수 없습니다: " + currentUsername));
+
+        //카테고리를 찾기
+        Category category = categoryRepository.findById(requestDto.getCategoryId())
+                .orElseThrow(() -> new IllegalArgumentException("카테고리를 찾을 수 없습니다."));
+
+        //DTO 정보를 바탕으로 Product엔티티 생성
+        Product product = new Product();
+        product.setTitle(requestDto.getTitle());
+        product.setDescription(requestDto.getDescription());
+        product.setPrice(requestDto.getPrice());
+        product.setLocation(requestDto.getLocation());
+        product.setSeller(seller);
+        product.setCategory(category);
+        product.setImageUrl(null);  // 이미지 없음
+
+        //데이터베이스에 저장
+        productRepository.save(product);
+
+        return "상품 등록이 완료되었습니다. (JWT 인증 완료)";
+    }
+
     @Transactional(readOnly = true)
     public List<ProductResponseDto> getProductrs(){
         //모든 Product 엔티티를 조회
@@ -92,10 +121,13 @@ public class ProductService {
     }
 
     @Transactional
-    public String updateProduct(Long id, ProductUpdateDto updateDto) {
+    public String updateProduct(Long id, ProductUpdateDto updateDto, String currentUsername) {
         // ID를 사용해 상품을 찾음. 없으면 예외 발생.
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
+
+        // 본인 상품인지 검증
+        validateProductOwnership(product, currentUsername);
 
         //DTO 정보를 엔티티에 업테이트
         product.setTitle(updateDto.getTitle());
@@ -103,20 +135,39 @@ public class ProductService {
         product.setPrice(updateDto.getPrice());
 
         return "상품 수정이 완료되었습니다.";
-
-
     }
 
     @Transactional
-    public String deleteProduct(Long id){
+    public String deleteProduct(Long id, String currentUsername){
         //ID를 사용해 상품을 찾고 없으면 예외 발생
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
+
+        // 본인 상품인지 검증
+        validateProductOwnership(product, currentUsername);
 
         //상품 삭제
         productRepository.delete(product);
 
         return "상품 삭제가 완료 되었습니다.";
+    }
+
+    /**
+     * 상품 소유권 검증 메서드
+     * 현재 로그인한 사용자가 해당 상품의 소유자인지 확인
+     * 
+     * @param product 검증할 상품
+     * @param currentUsername 현재 로그인한 사용자명
+     * @throws IllegalArgumentException 본인 상품이 아닌 경우
+     */
+    private void validateProductOwnership(Product product, String currentUsername) {
+        String productOwner = product.getSeller().getUsername();
+        
+        if (!productOwner.equals(currentUsername)) {
+            throw new IllegalArgumentException(
+                String.format("권한이 없습니다. 이 상품은 '%s'님이 등록한 상품입니다.", productOwner)
+            );
+        }
     }
 
 }
