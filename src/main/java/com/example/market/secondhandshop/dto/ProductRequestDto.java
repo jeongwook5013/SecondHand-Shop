@@ -12,5 +12,6 @@ public class ProductRequestDto {
     private int price;
     private String location;
     private Long categoryId;
+    private String imageUrl; // 이미지 URL 필드 추가
     private Long sellerId; // 현재는 임시로 받고, 나중에는 JWT에서 추출할 예정
 }

@@ -4,9 +4,10 @@ import com.example.market.secondhandshop.dto.ProductRequestDto;
 import com.example.market.secondhandshop.dto.ProductResponseDto;
 import com.example.market.secondhandshop.dto.ProductUpdateDto;
 import com.example.market.secondhandshop.service.ProductService;
-import com.example.market.secondhandshop.service.JwtService;
+import com.example.market.secondhandshop.service.FileUploadService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,40 +16,89 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 상품 관련 API 컨트롤러 (JWT 보안 적용)
+ * 상품 관련 API 컨트롤러 (JWT 필터 + 파일 업로드)
  * 
- * 보안 정책:
- * - GET 요청: 누구나 접근 가능
- * - POST/PUT/DELETE: JWT 토큰 필요
+ * 기능:
+ * 1. JWT 필터가 자동으로 인증 처리
+ * 2. Authentication 객체에서 username 추출
+ * 3. 파일 업로드 기능 추가
  */
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
 
     private final ProductService productService;
-    private final JwtService jwtService;
+    private final FileUploadService fileUploadService;
 
-    public ProductController(ProductService productService, JwtService jwtService) {
+    public ProductController(ProductService productService, FileUploadService fileUploadService) {
         this.productService = productService;
-        this.jwtService = jwtService;
+        this.fileUploadService = fileUploadService;
     }
 
     /**
-     * 상품 등록 - JWT 토큰 필요
+     * 상품 등록 (이미지 포함) - JWT 인증 필요
      */
     @PostMapping
     public ResponseEntity<?> registerProduct(
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            Authentication authentication, // JWT 필터가 자동 주입
+            @RequestParam("title") String title,
+            @RequestParam("description") String description,
+            @RequestParam("price") int price,
+            @RequestParam("location") String location,
+            @RequestParam("categoryId") Long categoryId,
+            @RequestParam(value = "image", required = false) MultipartFile image) {
+        
+        try {
+            // 1. 인증된 사용자명 추출
+            String username = authentication.getName();
+            System.out.println("🔐 상품 등록 요청 - 사용자: " + username);
+            
+            // 2. 이미지 업로드 처리
+            String imageUrl = null;
+            if (image != null && !image.isEmpty()) {
+                imageUrl = fileUploadService.uploadImage(image);
+                System.out.println("📸 이미지 업로드 완료: " + imageUrl);
+            }
+            
+            // 3. 상품 등록 DTO 생성
+            ProductRequestDto requestDto = new ProductRequestDto();
+            requestDto.setTitle(title);
+            requestDto.setDescription(description);
+            requestDto.setPrice(price);
+            requestDto.setLocation(location);
+            requestDto.setCategoryId(categoryId);
+            requestDto.setImageUrl(imageUrl);
+            
+            // 4. 상품 등록
+            String message = productService.registerProductWithoutFile(requestDto, username);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", message);
+            response.put("registeredBy", username);
+            response.put("imageUrl", imageUrl);
+            response.put("status", "success");
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage(), "status", "fail"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "상품 등록 중 오류가 발생했습니다: " + e.getMessage(), "status", "error"));
+        }
+    }
+
+    /**
+     * JSON 형태의 상품 등록 (이미지 없이) - 기존 호환성
+     */
+    @PostMapping("/json")
+    public ResponseEntity<?> registerProductJson(
+            Authentication authentication,
             @RequestBody ProductRequestDto requestDto) {
         
-        // JWT 토큰 검증
-        String username = validateJwtToken(authHeader);
-        if (username == null) {
-            return createUnauthorizedResponse();
-        }
-
         try {
-            // 파일 업로드 없이 일단 상품 등록
+            String username = authentication.getName();
             String message = productService.registerProductWithoutFile(requestDto, username);
             
             Map<String, Object> response = new HashMap<>();
@@ -85,21 +135,18 @@ public class ProductController {
     }
 
     /**
-     * 상품 수정 - JWT 토큰 필요
+     * 상품 수정 - JWT 인증 필요 (Spring Security가 자동 처리)
      */
     @PutMapping("/{id}")
     public ResponseEntity<?> updateProduct(
             @PathVariable Long id,
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            Authentication authentication, // JWT 필터가 자동 주입
             @RequestBody ProductUpdateDto updateDto) {
         
-        // JWT 토큰 검증
-        String username = validateJwtToken(authHeader);
-        if (username == null) {
-            return createUnauthorizedResponse();
-        }
-
         try {
+            String username = authentication.getName();
+            System.out.println("🔐 상품 수정 요청 - 사용자: " + username + ", 상품 ID: " + id);
+            
             String result = productService.updateProduct(id, updateDto, username);
             
             Map<String, Object> response = new HashMap<>();
@@ -109,7 +156,6 @@ public class ProductController {
             
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            // 권한 없음 또는 상품 없음 등의 경우
             HttpStatus status = e.getMessage().contains("권한이 없습니다") ? 
                 HttpStatus.FORBIDDEN : HttpStatus.BAD_REQUEST;
             
@@ -122,20 +168,17 @@ public class ProductController {
     }
 
     /**
-     * 상품 삭제 - JWT 토큰 필요
+     * 상품 삭제 - JWT 인증 필요 (Spring Security가 자동 처리)
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteProduct(
             @PathVariable Long id,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+            Authentication authentication) { // JWT 필터가 자동 주입
         
-        // JWT 토큰 검증
-        String username = validateJwtToken(authHeader);
-        if (username == null) {
-            return createUnauthorizedResponse();
-        }
-
         try {
+            String username = authentication.getName();
+            System.out.println("🔐 상품 삭제 요청 - 사용자: " + username + ", 상품 ID: " + id);
+            
             String result = productService.deleteProduct(id, username);
             
             Map<String, Object> response = new HashMap<>();
@@ -145,7 +188,6 @@ public class ProductController {
             
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            // 권한 없음 또는 상품 없음 등의 경우
             HttpStatus status = e.getMessage().contains("권한이 없습니다") ? 
                 HttpStatus.FORBIDDEN : HttpStatus.BAD_REQUEST;
                 
@@ -158,32 +200,29 @@ public class ProductController {
     }
 
     /**
-     * JWT 토큰 검증 헬퍼 메서드
+     * 단일 이미지 업로드 API (테스트용)
      */
-    private String validateJwtToken(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return null;
-        }
-
-        String token = authHeader.substring(7);
+    @PostMapping("/upload-image")
+    public ResponseEntity<?> uploadImage(
+            Authentication authentication,
+            @RequestParam("image") MultipartFile image) {
+        
         try {
-            String username = jwtService.getUsernameFromToken(token);
-            if (jwtService.validateToken(token, username)) {
-                return username;
-            }
+            String imageUrl = fileUploadService.uploadImage(image);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "이미지 업로드 성공");
+            response.put("imageUrl", imageUrl);
+            response.put("uploadedBy", authentication.getName());
+            response.put("status", "success");
+            
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage(), "status", "fail"));
         } catch (Exception e) {
-            // 토큰 파싱 실패
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "이미지 업로드 중 오류가 발생했습니다: " + e.getMessage(), "status", "error"));
         }
-        return null;
-    }
-
-    /**
-     * 인증 실패 응답 생성
-     */
-    private ResponseEntity<?> createUnauthorizedResponse() {
-        Map<String, String> response = new HashMap<>();
-        response.put("error", "인증이 필요합니다. Authorization 헤더에 유효한 JWT 토큰을 포함해주세요.");
-        response.put("status", "unauthorized");
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 }
