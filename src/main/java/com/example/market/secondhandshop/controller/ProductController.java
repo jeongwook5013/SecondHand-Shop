@@ -121,7 +121,7 @@ public class ProductController {
      */
     @GetMapping
     public ResponseEntity<List<ProductResponseDto>> getProducts() {
-        List<ProductResponseDto> products = productService.getProductrs();
+        List<ProductResponseDto> products = productService.getProducts();
         return ResponseEntity.ok(products);
     }
 

@@ -63,9 +63,6 @@ public class SecurityConfig {
                 // 상품 조회(GET)는 누구나 가능
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 
-                // H2 콘솔 접근 허용 (개발용)
-                .requestMatchers("/h2-console/**").permitAll()
-                
                 // 정적 리소스 허용
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()
                 
@@ -79,10 +76,7 @@ public class SecurityConfig {
             )
             
             // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 추가
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            
-            // H2 콘솔을 위한 설정 (개발용)
-            .headers(headers -> headers.frameOptions().disable());
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

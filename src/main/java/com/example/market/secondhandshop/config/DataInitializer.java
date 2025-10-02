@@ -61,7 +61,7 @@ public class DataInitializer implements CommandLineRunner {
 
         System.out.println("✅ 초기 데이터 설정이 완료되었습니다!");
         System.out.println("📋 테스트 계정: testuser1 / test123!");
-        System.out.println("🌐 H2 콘솔: http://localhost:8080/h2-console");
+        System.out.println("🗄️ 데이터베이스: MariaDB (localhost:3306/secondhand_shop)");
     }
 
     private Category createCategory(String name) {

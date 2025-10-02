@@ -100,7 +100,7 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProductResponseDto> getProductrs(){
+    public List<ProductResponseDto> getProducts(){
         //모든 Product 엔티티를 조회
         List<Product> products = productRepository.findAll();
 
